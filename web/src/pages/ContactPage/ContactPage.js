@@ -1,3 +1,4 @@
+import { useForm } from 'react-hook-form'
 import {
   Form,
   TextField,
@@ -5,8 +6,9 @@ import {
   TextAreaField,
   FieldError,
   Label,
+  FormError,
 } from '@redwoodjs/forms'
-import { useMutation } from '@redwoodjs/web'
+import { Flash, useFlash, useMutation } from '@redwoodjs/web'
 import BlogLayout from 'src/layouts/BlogLayout'
 
 const CREATE_CONTACT = gql`
@@ -18,15 +20,34 @@ const CREATE_CONTACT = gql`
 `
 
 const ContactPage = () => {
-  const [create] = useMutation(CREATE_CONTACT)
+  const formMethods = useForm({ mode: 'onBlur' })
+  const { addMessage } = useFlash()
+  const [create, { loading, error }] = useMutation(CREATE_CONTACT, {
+    onCompleted: () => {
+      addMessage('Thank you for your submission', {
+        style: { backgroundColor: 'green', color: 'white', padding: '1rem' },
+      })
+    },
+  })
 
   const onSubmit = (data) => {
+    create({ variables: { input: data } })
     console.log(data)
   }
 
   return (
     <BlogLayout>
-      <Form onSubmit={onSubmit} validation={{ mode: 'onBlur' }}>
+      <Flash timeout={2000} />
+      <Form
+        onSubmit={onSubmit}
+        validation={{ mode: 'onBlur' }}
+        error={error}
+        formMethods={formMethods}
+      >
+        <FormError
+          error={error}
+          wrapperStyle={{ color: 'red', backgroundColor: 'lavenderblush' }}
+        />
         <Label name="name" errorClassName="error">
           Name
         </Label>
@@ -43,10 +64,6 @@ const ContactPage = () => {
           name="email"
           validation={{
             required: true,
-            pattern: {
-              value: /[^@]+@[^.]+\..+/,
-              message: 'Please enter a valid email address',
-            },
           }}
           errorClassName="error"
         />
@@ -60,7 +77,7 @@ const ContactPage = () => {
           errorClassName="error"
         />
         <FieldError name="message" className="error" />
-        <Submit>Save</Submit>
+        <Submit disabled={loading}>Save</Submit>
       </Form>
     </BlogLayout>
   )
